@@ -1,16 +1,21 @@
-import { sleep, check } from 'k6';
-import { Options } from 'k6/options';
+import { check, group } from 'k6';
 import http from 'k6/http';
+import { Trend } from 'k6/metrics';
 
-export let options:Options = {
-  vus: 50,
-  duration: '10s'
+const uptimeTrendCheck = new Trend('/GET API uptime');
+
+export let options = {
+   stages: [
+       { duration: '0.5m', target: 3 }, // simulate ramp-up of traffic from 0 to 3Vus
+   ],
 };
 
-export default () => {
-  const res = http.get('https://test-api.k6.io');
-  check(res, {
-    'status is 200': () => res.status === 200,
-  });
-  sleep(1);
-};
+export default function () {
+   group('API uptime check', () => {
+       const response = http.get('https://aqueous-brook-60480.herokuapp.com/todos/');
+       uptimeTrendCheck.add(response.timings.duration);
+       check(response, {
+           "status code should be 200": res => res.status === 200,
+       });
+   });
+  }
